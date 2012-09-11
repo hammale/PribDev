@@ -1,0 +1,6 @@
+name: PribKits
+main: me.hammale.kit.kit
+version: 1.0
+author: [hammale]
+commands:
+  kit:
