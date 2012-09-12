@@ -1,6 +1,7 @@
 package me.hammale.kit;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
@@ -15,13 +16,17 @@ public class MovingVan implements Serializable
     private final HashMap<Integer, CardboardBox> s_armour, s_items;
  
     private String name;
-
-	private Collection<PotionEffect> potEffects;
     
-    public MovingVan(String name, PlayerInventory inventory,
-			Collection<PotionEffect> potEffects) {
+    public String perm;
+    
+	private Collection<PotionEffectBox> potEffects = new ArrayList<PotionEffectBox>();
+    
+    public MovingVan(String name, PlayerInventory inventory, Collection<PotionEffect> potEffects, String perm) {
     	this.name = name;
-    	this.potEffects = potEffects;
+    	this.perm = perm;
+    	for(PotionEffect pot : potEffects){
+    		this.potEffects.add(new PotionEffectBox(pot));
+    	}
         ItemStack[] armour, items;
         armour = inventory.getArmorContents();
         items = inventory.getContents();
@@ -54,7 +59,11 @@ public class MovingVan implements Serializable
     }
     
 	public Collection<PotionEffect> getPotEffects(){
-		return this.potEffects;
+		Collection<PotionEffect> effects = new ArrayList<PotionEffect>();
+		for(PotionEffectBox pot : this.potEffects){
+			effects.add(pot.unBox());
+		}
+		return effects;
 	}
 	
     /**
