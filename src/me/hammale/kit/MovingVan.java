@@ -16,7 +16,6 @@ public class MovingVan implements Serializable
     private final HashMap<Integer, CardboardBox> s_armour, s_items;
  
     private String name;
-    
     public String perm;
     
 	private Collection<PotionEffectBox> potEffects = new ArrayList<PotionEffectBox>();
