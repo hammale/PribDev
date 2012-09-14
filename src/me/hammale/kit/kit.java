@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.logging.Logger;
 
@@ -14,6 +16,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
@@ -91,14 +94,17 @@ public class kit extends JavaPlugin {
 						}
 						p.sendMessage(ChatColor.GREEN + "Kit recieved!");
 						hasKit.add(p.getName());
+						return true;
 					}
 				}
+				p.sendMessage(ChatColor.RED + "Kit not found!");
 			}else if(args.length == 2
 					&& p.isOp()){
 				if(args[0].equalsIgnoreCase("set")){
 					MovingVan tmp = new MovingVan(args[1], p.getInventory(), p.getActivePotionEffects(), "NA");
 					checkKit(tmp);
 					vans.add(tmp);
+					writeConfig(tmp, p, args[1], "NA");
 					write();
 					p.getInventory().clear();
 					removeAllPotionEffects(p);
@@ -110,6 +116,7 @@ public class kit extends JavaPlugin {
 					MovingVan tmp = new MovingVan(args[1], p.getInventory(), p.getActivePotionEffects(), args[2]);
 					checkKit(tmp);
 					vans.add(tmp);
+					writeConfig(tmp, p, args[1], args[2]);
 					write();
 					p.getInventory().clear();
 					removeAllPotionEffects(p);
@@ -120,6 +127,45 @@ public class kit extends JavaPlugin {
 		return true;
 	}
 	
+	private void writeConfig(MovingVan van, Player p, String name, String perm) {
+		ArrayList<Integer> tmpList = new ArrayList<Integer>();
+		for(ItemStack is : Arrays.asList(p.getInventory().getContents())){
+			if(is != null){
+				tmpList.add(is.getTypeId());
+			}
+		}
+		config.set("Kits." + name + ".Perm", perm);
+		config.set("Kits." + name + ".Items", tmpList.toArray());
+		if(p.getInventory().getHelmet() != null){
+			config.set("Kits." + name + ".Armor.Head", p.getInventory().getHelmet().getTypeId());
+		}else{
+			config.set("Kits." + name + ".Armor.Head", 0);
+		}
+		if(p.getInventory().getChestplate() != null){
+			config.set("Kits." + name + ".Armor.Chest", p.getInventory().getChestplate().getTypeId());
+		}else{
+			config.set("Kits." + name + ".Armor.Chest", 0);
+		}
+		if(p.getInventory().getLeggings() != null){
+			config.set("Kits." + name + ".Armor.Legs", p.getInventory().getLeggings().getTypeId());
+		}else{
+			config.set("Kits." + name + ".Armor.Legs", 0);
+		}
+		if(p.getInventory().getBoots() != null){
+			config.set("Kits." + name + ".Armor.Boots", p.getInventory().getBoots().getTypeId());
+		}else{
+			config.set("Kits." + name + ".Armor.Boots", 0);
+		}
+		ArrayList<Integer> tmpPots = new ArrayList<Integer>();
+		for(PotionEffect pot : p.getActivePotionEffects()){
+			tmpPots.add(pot.getType().getId());
+		}
+		config.set("Kits." + name + ".PotionEffects.Day", perm);
+		saveConfig();
+		reloadConfig();
+		config = getConfig();
+	}
+
 	public void checkKit(MovingVan van){
 		MovingVan tmp = null;
 		for(MovingVan v : vans){
