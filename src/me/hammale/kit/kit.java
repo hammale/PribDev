@@ -160,7 +160,14 @@ public class kit extends JavaPlugin {
 		for(PotionEffect pot : p.getActivePotionEffects()){
 			tmpPots.add(pot.getType().getId());
 		}
-		config.set("Kits." + name + ".PotionEffects.Day", perm);
+		Integer[] tmpInts = new Integer[p.getActivePotionEffects().size()];
+		int n = 0;
+		for(PotionEffect pot : p.getActivePotionEffects()){
+			tmpInts[n] = pot.getType().getId();
+			n++;
+		}
+		config.set("Kits." + name + ".PotionEffects.Day", tmpInts);
+		config.set("Kits." + name + ".PotionEffects.Night", tmpInts);
 		saveConfig();
 		reloadConfig();
 		config = getConfig();
