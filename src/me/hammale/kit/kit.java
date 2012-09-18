@@ -20,6 +20,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 public class kit extends JavaPlugin {
 	
@@ -79,18 +80,38 @@ public class kit extends JavaPlugin {
 							p.sendMessage(ChatColor.RED + "You already have a kit!");
 							return true;
 						}
-						if(!van.perm.equalsIgnoreCase("NA")
-								&& !p.hasPermission(van.perm)){
+						if(!getConfig().getString("Kits." + args[0] + ".Perm").equalsIgnoreCase("NA")
+								&& !p.hasPermission(getConfig().getString("Kits." + args[0] + ".Perm"))){
 							p.sendMessage(ChatColor.RED + "You don't have permission!");
-							return true;							
+							return true;
 						}
 						p.getInventory().clear();
 						removeAllPotionEffects(p);
-						p.getInventory().setContents(van.unboxContents());
-						p.getInventory().setArmorContents(van.unboxArmour());
-						p.addPotionEffects(van.getPotEffects());
-						for(PotionEffect pot : van.getPotEffects()){
-							p.addPotionEffect(new PotionEffect(pot.getType(), 999999999, pot.getAmplifier()));
+						//p.getInventory().setContents(van.unboxContents());
+						//p.getInventory().setArmorContents(van.unboxArmour());
+						//p.addPotionEffects(van.getPotEffects());
+						
+						for(String s : getConfig().getStringList("Kits." + args[0] + ".Items")){
+							String[] tmp = s.split(":");
+							if(Short.parseShort(tmp[2]) == 0){
+								p.getInventory().addItem(new ItemStack(Integer.parseInt(tmp[0]), Integer.parseInt(tmp[1])));
+							}else{
+								p.getInventory().addItem(new ItemStack(Integer.parseInt(tmp[0]), Integer.parseInt(tmp[1]), Short.parseShort(tmp[2])));
+							}
+						}
+						p.getInventory().setHelmet(new ItemStack(config.getInt("Kits." + args[0] + ".Armor.Head")));
+						p.getInventory().setChestplate(new ItemStack(config.getInt("Kits." + args[0] + ".Armor.Chest")));
+						p.getInventory().setLeggings(new ItemStack(config.getInt("Kits." + args[0] + ".Armor.Legs")));
+						p.getInventory().setBoots(new ItemStack(config.getInt("Kits." + args[0] + ".Armor.Boots")));
+						
+						if(p.getWorld().getTime() < 12000){
+							for(int i : config.getIntegerList("Kits." + args[0] + ".PotionEffects.Day")){
+								p.addPotionEffect(new PotionEffect(PotionEffectType.getById(i), 999999999, 1));
+							}
+						}else{
+							for(int i : config.getIntegerList("Kits." + args[0] + ".PotionEffects.Night")){
+								p.addPotionEffect(new PotionEffect(PotionEffectType.getById(i), 999999999, 1));
+							}
 						}
 						p.sendMessage(ChatColor.GREEN + "Kit recieved!");
 						hasKit.add(p.getName());
@@ -107,6 +128,10 @@ public class kit extends JavaPlugin {
 					writeConfig(tmp, p, args[1], "NA");
 					write();
 					p.getInventory().clear();
+					p.getInventory().setHelmet(new ItemStack(0));
+					p.getInventory().setChestplate(new ItemStack(0));
+					p.getInventory().setLeggings(new ItemStack(0));
+					p.getInventory().setBoots(new ItemStack(0));
 					removeAllPotionEffects(p);
 					p.sendMessage(ChatColor.GREEN + "Kit set!");					
 				}
@@ -119,6 +144,10 @@ public class kit extends JavaPlugin {
 					writeConfig(tmp, p, args[1], args[2]);
 					write();
 					p.getInventory().clear();
+					p.getInventory().setHelmet(new ItemStack(0));
+					p.getInventory().setChestplate(new ItemStack(0));
+					p.getInventory().setLeggings(new ItemStack(0));
+					p.getInventory().setBoots(new ItemStack(0));
 					removeAllPotionEffects(p);
 					p.sendMessage(ChatColor.GREEN + "Kit set!");
 				}
@@ -128,10 +157,10 @@ public class kit extends JavaPlugin {
 	}
 	
 	private void writeConfig(MovingVan van, Player p, String name, String perm) {
-		ArrayList<Integer> tmpList = new ArrayList<Integer>();
+		ArrayList<String> tmpList = new ArrayList<String>();
 		for(ItemStack is : Arrays.asList(p.getInventory().getContents())){
 			if(is != null){
-				tmpList.add(is.getTypeId());
+				tmpList.add(new String(is.getTypeId() + ":" + is.getAmount() + ":" + is.getDurability()));
 			}
 		}
 		config.set("Kits." + name + ".Perm", perm);
@@ -160,14 +189,12 @@ public class kit extends JavaPlugin {
 		for(PotionEffect pot : p.getActivePotionEffects()){
 			tmpPots.add(pot.getType().getId());
 		}
-		Integer[] tmpInts = new Integer[p.getActivePotionEffects().size()];
-		int n = 0;
+		ArrayList<Integer> tmpInts = new ArrayList<Integer>();
 		for(PotionEffect pot : p.getActivePotionEffects()){
-			tmpInts[n] = pot.getType().getId();
-			n++;
+			tmpInts.add(pot.getType().getId());
 		}
-		config.set("Kits." + name + ".PotionEffects.Day", tmpInts);
-		config.set("Kits." + name + ".PotionEffects.Night", tmpInts);
+		config.set("Kits." + name + ".PotionEffects.Day", tmpInts.toArray());
+		config.set("Kits." + name + ".PotionEffects.Night", tmpInts.toArray());
 		saveConfig();
 		reloadConfig();
 		config = getConfig();
