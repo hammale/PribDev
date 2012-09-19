@@ -8,10 +8,12 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.logging.Logger;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -30,8 +32,16 @@ public class kit extends JavaPlugin {
 	
 	public FileConfiguration config;
 	
+	int timerId;
+	
+	Random ran = new Random();
+	
+	boolean night = false;
+	
 	public HashSet<MovingVan> vans = new HashSet<MovingVan>();
 	public HashSet<String> hasKit = new HashSet<String>();
+
+	public HashSet<String> invince = new HashSet<String>();
 	
 	@Override
 	public void onEnable(){
@@ -43,13 +53,56 @@ public class kit extends JavaPlugin {
 		read();
 		this.logger.info(pdfFile.getName() + ", Version "
 				+ pdfFile.getVersion() + ", Has Been Enabled!");
+		startTimer();
 	}	
 	
+	private void resetTime(){
+		getServer().getScheduler().cancelTask(timerId);
+		startTimer();
+	}
+	
+	private void startTimer() {
+		for(World w : getServer().getWorlds()){
+			w.setTime(0L);
+		}
+		timerId = getServer().getScheduler().scheduleAsyncRepeatingTask(this, new Runnable() {
+			public void run() {
+		       if(night){
+		    	   for(MovingVan van : vans){
+		    		   for(int i : config.getIntegerList("Kits." + van.getName() + ".PotionEffects.Night")){
+		    			   for(String s : van.users){
+		    				   if(getServer().getPlayer(s) != null){
+		    					   removeAllPotionEffects(getServer().getPlayer(s));
+		    					   getServer().getPlayer(s).addPotionEffect(new PotionEffect(PotionEffectType.getById(i), 999999999, 1));
+		    				   }
+		    			   }
+						}
+		    	   }
+		    	   night = false;
+		       }else{
+		    	   for(MovingVan van : vans){
+		    		   for(int i : config.getIntegerList("Kits." + van.getName() + ".PotionEffects.Day")){
+		    			   for(String s : van.users){
+		    				   if(getServer().getPlayer(s) != null){
+		    					   removeAllPotionEffects(getServer().getPlayer(s));
+		    					   getServer().getPlayer(s).addPotionEffect(new PotionEffect(PotionEffectType.getById(i), 999999999, 1));
+		    				   }
+		    			   }
+						}
+		    	   }
+		    	   night = true;
+		       }
+			}
+		}, 0L, 12000L);
+	}
+
 	private void handleConfig() {
 		File f = new File("plugins/PribKits/plugin.yml");
 		if (!f.exists()) {
 			config.options().copyDefaults(false);
 			config.addDefault("Respawn", "world,1,1,1");
+			String[] tmpRespawn = new String[]{"world,2,2,2", "world,3,3,3"};
+			config.addDefault("RandomSpawns", tmpRespawn);
 			config.options().copyDefaults(true);
 			saveConfig();
 		}
@@ -70,12 +123,25 @@ public class kit extends JavaPlugin {
 	
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args){
-		if(sender instanceof Player
-				&& cmd.getName().equalsIgnoreCase("kit")){
-			Player p = (Player) sender;	
-			if(args.length == 1){
+		if(!(sender instanceof Player)){
+			sender.sendMessage("Players only please!");
+			return true;
+		}
+		Player p = (Player) sender;
+		if(cmd.getName().equalsIgnoreCase("sync")
+				&& args.length > 0
+				&& args[0].equalsIgnoreCase("time")
+				&& p.isOp()){
+			p.sendMessage(ChatColor.GREEN + "Time sync'd!");
+			resetTime();
+		}
+		if(cmd.getName().equalsIgnoreCase("kit")){
+			if(args.length == 1
+					&& !args[0].equalsIgnoreCase("list")){
 				for(MovingVan van : vans){
 					if(van.getName().equalsIgnoreCase(args[0])){
+						van.users.add(p.getName());
+						write();
 						if(hasKit.contains(p.getName())){
 							p.sendMessage(ChatColor.RED + "You already have a kit!");
 							return true;
@@ -87,9 +153,6 @@ public class kit extends JavaPlugin {
 						}
 						p.getInventory().clear();
 						removeAllPotionEffects(p);
-						//p.getInventory().setContents(van.unboxContents());
-						//p.getInventory().setArmorContents(van.unboxArmour());
-						//p.addPotionEffects(van.getPotEffects());
 						
 						for(String s : getConfig().getStringList("Kits." + args[0] + ".Items")){
 							String[] tmp = s.split(":");
@@ -113,12 +176,22 @@ public class kit extends JavaPlugin {
 								p.addPotionEffect(new PotionEffect(PotionEffectType.getById(i), 999999999, 1));
 							}
 						}
-						p.sendMessage(ChatColor.GREEN + "Kit recieved!");
 						hasKit.add(p.getName());
+						if(invince.contains(p.getName())){
+							invince.remove(p.getName());
+						}
+						tpRandom(p);
+						p.sendMessage(ChatColor.GREEN + "Kit recieved!");
 						return true;
 					}
 				}
 				p.sendMessage(ChatColor.RED + "Kit not found!");
+			}else if(args.length == 1
+					&& args[0].equalsIgnoreCase("list")){
+				p.sendMessage(ChatColor.DARK_GREEN + "---- " + ChatColor.GREEN + "KITS" + ChatColor.DARK_GREEN + " ----");
+				for(MovingVan van : vans){
+					p.sendMessage(ChatColor.BLUE + van.getName());
+				}
 			}else if(args.length == 2
 					&& p.isOp()){
 				if(args[0].equalsIgnoreCase("set")){
@@ -156,6 +229,16 @@ public class kit extends JavaPlugin {
 		return true;
 	}
 	
+	private void tpRandom(Player p) {
+		int random = ran.nextInt(config.getStringList("RandomSpawns").size()+1);
+		if(random == 0){
+			random = 1;
+		}
+		String spawn = config.getStringList("RandomSpawns").get(random);
+		String[] split = spawn.split(",");
+		p.teleport(new Location(getServer().getWorld(split[0]), Double.parseDouble(split[1]),  Double.parseDouble(split[2]),  Double.parseDouble(split[3])));
+	}
+
 	private void writeConfig(MovingVan van, Player p, String name, String perm) {
 		ArrayList<String> tmpList = new ArrayList<String>();
 		for(ItemStack is : Arrays.asList(p.getInventory().getContents())){
@@ -255,6 +338,15 @@ public class kit extends JavaPlugin {
 
 	public Location getRespawn() {
 		return respawn;
+	}
+
+	public MovingVan getVan(Player p) {
+		for(MovingVan van : vans){
+			if(van.users.contains(p.getName())){
+				return van;
+			}
+		}
+		return null;
 	}
 	
 }

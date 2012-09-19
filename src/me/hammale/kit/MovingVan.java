@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -19,6 +20,7 @@ public class MovingVan implements Serializable
     public String perm;
     
 	private Collection<PotionEffectBox> potEffects = new ArrayList<PotionEffectBox>();
+	public HashSet<String> users = new HashSet<String>();
     
     public MovingVan(String name, PlayerInventory inventory, Collection<PotionEffect> potEffects, String perm) {
     	this.name = name;
